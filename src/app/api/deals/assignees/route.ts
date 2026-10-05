@@ -1,0 +1,6 @@
+import {NextResponse} from "next/server";
+import {requireTenantAccess} from "@/server/tenant-scope";
+import {Membership} from "@/server/models/Membership";
+import {User} from "@/server/models/User";
+export const dynamic="force-dynamic";
+export async function GET(){let access;try{access=await requireTenantAccess("deals:write")}catch(error){if(error instanceof Error&&error.message==="PERMISSION_DENIED")return NextResponse.json({error:"You do not have permission to view deal assignees."},{status:403});return NextResponse.json({error:"Deal assignees are temporarily unavailable."},{status:503})}if(!access)return NextResponse.json({error:"Sign in is required."},{status:401});try{const memberships=await Membership.find({tenantId:access.scope.tenantId,revokedAt:null,...(access.scope.role==="sales"?{userId:access.scope.userId}:{})}).select("userId").lean(),users=await User.find({_id:{$in:memberships.map(member=>member.userId)},disabledAt:null}).select("name email").sort({name:1}).lean();return NextResponse.json({assignees:users.map(user=>({id:String(user._id),name:user.name,email:user.email}))},{headers:{"Cache-Control":"private, no-store"}})}catch{return NextResponse.json({error:"Deal assignees are temporarily unavailable."},{status:503})}}

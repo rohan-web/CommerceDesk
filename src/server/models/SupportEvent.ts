@@ -1,0 +1,5 @@
+import mongoose,{Schema,type InferSchemaType,type Model} from "mongoose";
+const schema=new Schema({tenantId:{type:Schema.Types.ObjectId,ref:"Tenant",required:true,immutable:true},caseId:{type:Schema.Types.ObjectId,ref:"SupportCase",required:true,immutable:true},actorId:{type:Schema.Types.ObjectId,ref:"User",default:null,immutable:true},action:{type:String,enum:["created","status_changed","note_added","staff_reply","customer_reply","return_requested","return_authorized","return_rejected","return_received"],required:true,immutable:true},visibility:{type:String,enum:["private","customer"],default:"private",immutable:true},body:{type:String,trim:true,maxlength:2000,default:"",immutable:true},metadata:{type:Schema.Types.Mixed,default:{},immutable:true}},{timestamps:{createdAt:true,updatedAt:false},versionKey:false});
+schema.index({tenantId:1,caseId:1,createdAt:-1});
+export type SupportEventRecord=InferSchemaType<typeof schema>;
+export const SupportEvent:Model<SupportEventRecord>=mongoose.models.SupportEvent??mongoose.model<SupportEventRecord>("SupportEvent",schema);

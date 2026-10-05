@@ -1,0 +1,9 @@
+import mongoose,{Schema,type InferSchemaType,type Model} from "mongoose";
+const draftLineSchema=new Schema({itemId:{type:Schema.Types.ObjectId,ref:"CatalogueItem",required:true},quantity:{type:Number,required:true,min:1,max:100000}},{_id:false,versionKey:false});
+const schema=new Schema({
+ tenantId:{type:Schema.Types.ObjectId,ref:"Tenant",required:true,immutable:true},quoteNumber:{type:String,required:true,immutable:true,trim:true,maxlength:32},customerId:{type:Schema.Types.ObjectId,ref:"Customer",required:true},customerSnapshot:{name:{type:String,default:""},email:{type:String,default:null},phone:{type:String,default:null}},
+ status:{type:String,enum:["draft","issued","accepted","declined","expired","converted"],required:true,default:"draft"},draftLines:{type:[draftLineSchema],required:true,validate:{validator:(value:unknown[])=>value.length>0&&value.length<=50,message:"Quote needs 1–50 item lines."}},terms:{type:String,trim:true,maxlength:4000,default:""},expiresAt:{type:Date,required:true},currentRevision:{type:Number,required:true,default:0},acceptedRevision:{type:Number,default:null},acceptTokenHash:{type:String,default:null,select:false},acceptedAt:{type:Date,default:null},acceptedByName:{type:String,trim:true,maxlength:160,default:null},convertedOrderId:{type:Schema.Types.ObjectId,ref:"Order",default:null},convertedAt:{type:Date,default:null},createdBy:{type:Schema.Types.ObjectId,ref:"User",required:true,immutable:true}
+},{timestamps:true,versionKey:"version"});
+schema.index({tenantId:1,quoteNumber:1},{unique:true});schema.index({tenantId:1,status:1,updatedAt:-1});schema.index({acceptTokenHash:1},{unique:true,partialFilterExpression:{acceptTokenHash:{$type:"string"}}});
+export type QuoteRecord=InferSchemaType<typeof schema>;
+export const Quote:Model<QuoteRecord>=mongoose.models.Quote??mongoose.model<QuoteRecord>("Quote",schema);
