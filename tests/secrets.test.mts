@@ -8,7 +8,7 @@ test("encrypts receipt secrets with authenticated encryption and rejects tamperi
   assert.equal(hasValidEncryptionKey(),true);
   const secret="private-receipt-token-keep-out-of-storage";const encrypted=encryptSecret(secret);
   assert.notEqual(encrypted,secret);assert.equal(encrypted.includes(secret),false);assert.equal(decryptSecret(encrypted),secret);
-  const parts=encrypted.split(":");parts[3]=`${parts[3].slice(0,-1)}${parts[3].endsWith("A")?"B":"A"}`;
+  const parts=encrypted.split(":");parts[3]=`${parts[3].startsWith("A")?"B":"A"}${parts[3].slice(1)}`;
   assert.throws(()=>decryptSecret(parts.join(":")));
   process.env.APP_ENCRYPTION_KEY=Buffer.alloc(32,8).toString("base64url");assert.throws(()=>decryptSecret(encrypted));
  }finally{if(prior===undefined)delete process.env.APP_ENCRYPTION_KEY;else process.env.APP_ENCRYPTION_KEY=prior}

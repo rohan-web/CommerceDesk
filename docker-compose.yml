@@ -34,6 +34,8 @@ services:
     environment:
       MONGODB_URI: mongodb://mongo:27017/commercedesk?replicaSet=rs0
       REDIS_URL: redis://redis:6379
+      UPLOAD_DIR: /app/private_uploads
+    volumes: ["work_order_files:/app/private_uploads"]
     depends_on:
       mongo-init:
         condition: service_completed_successfully
@@ -47,6 +49,8 @@ services:
     environment:
       MONGODB_URI: mongodb://mongo:27017/commercedesk?replicaSet=rs0
       REDIS_URL: redis://redis:6379
+      UPLOAD_DIR: /app/private_uploads
+    volumes: ["work_order_files:/app/private_uploads"]
     depends_on:
       mongo-init:
         condition: service_completed_successfully
@@ -56,3 +60,4 @@ services:
 volumes:
   mongo_data:
   redis_data:
+  work_order_files:

@@ -25,3 +25,21 @@ export function formatMinorUnits(amountMinor:number,currency:Currency,locale:str
  return formatter.format(amountMinor/(10**digits));
 }
 
+/** Apply a basis-point discount with half-up rounding in integer minor units. */
+export function applyDiscountMinor(amountMinor:number,discountPercentBps:number){
+ integer(amountMinor,"amountMinor");integer(discountPercentBps,"discountPercentBps");
+ if(amountMinor<0||discountPercentBps<0||discountPercentBps>9999)throw new RangeError("Discount inputs are out of range.");
+ return toSafeNumber((BigInt(amountMinor)*BigInt(10000-discountPercentBps)+5000n)/10000n,"discounted amount");
+}
+/** Discounts the taxable base before recalculating tax once at the line level. */
+export function calculateDiscountedLineAmount(input:LineAmountInput,currency:Currency,discountPercentBps:number):LineAmount&{discountAmountMinor:number}{
+ const original=calculateLineAmount(input,currency);
+ if(!Number.isInteger(discountPercentBps)||discountPercentBps<0||discountPercentBps>9999)throw new RangeError("Discount inputs are out of range.");
+ const rate=BigInt(input.taxRateBps);let netMinor:number,taxMinor:number,grossMinor:number;
+ if(input.taxMode==="inclusive"){
+  grossMinor=applyDiscountMinor(original.grossMinor,discountPercentBps);const tax=(BigInt(grossMinor)*rate+(10000n+rate)/2n)/(10000n+rate);taxMinor=toSafeNumber(tax,"taxMinor");netMinor=grossMinor-taxMinor;
+ }else{
+  netMinor=applyDiscountMinor(original.netMinor,discountPercentBps);const tax=(BigInt(netMinor)*rate+5000n)/10000n;taxMinor=toSafeNumber(tax,"taxMinor");grossMinor=toSafeNumber(BigInt(netMinor)+tax,"grossMinor");
+ }
+ return{currency,netMinor,taxMinor,grossMinor,discountAmountMinor:original.grossMinor-grossMinor};
+}

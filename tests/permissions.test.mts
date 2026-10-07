@@ -9,6 +9,12 @@ test("role map separates commerce operations and finance actions",()=>{
  assert.equal(can({role:"sales"},"stock:write"),false);
  assert.equal(can({role:"sales"},"deals:write"),true);
  assert.equal(can({role:"operations"},"stock:write"),true);
+ assert.equal(can({role:"operations"},"orders:fulfil"),true);
+ assert.equal(can({role:"operations"},"workorders:read"),true);
+ assert.equal(can({role:"operations"},"workorders:write"),true);
+ assert.equal(can({role:"sales"},"workorders:read"),false);
+ assert.equal(can({role:"finance"},"workorders:write"),false);
+ assert.equal(can({role:"sales"},"orders:fulfil"),false);
  assert.equal(can({role:"operations"},"customers:write"),false);
  assert.equal(can({role:"finance"},"orders:read"),true);
  assert.equal(can({role:"finance"},"orders:write"),false);

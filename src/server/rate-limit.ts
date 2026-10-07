@@ -19,6 +19,14 @@ export async function consumePublicAppointmentAttempt(tenantId:string,ipAddress:
 export async function consumePublicAppointmentLookup(ipAddress:string){
  const identity=createHash("sha256").update(ipAddress||"unknown").digest("hex"),key=`appointment:lookup:${identity}`;return Number(await getRedis().eval(limiterScript,1,key,15*60*1000));
 }
+export async function consumePublicConversationAttempt(ipAddress:string){
+ const identity=createHash("sha256").update(ipAddress||"unknown").digest("hex"),key=`conversation:public:${identity}`;return Number(await getRedis().eval(limiterScript,1,key,15*60*1000));
+}
 export async function consumeCustomerPortalLookup(ipAddress:string){
  const identity=createHash("sha256").update(ipAddress||"unknown").digest("hex"),key=`customer:portal:${identity}`;return Number(await getRedis().eval(limiterScript,1,key,15*60*1000));
+}
+export async function consumePasswordResetIp(ipAddress:string){const identity=createHash("sha256").update(ipAddress||"unknown").digest("hex");return Number(await getRedis().eval(limiterScript,1,`auth:password-reset:ip:${identity}`,15*60*1000))}
+export async function consumePasswordResetEmail(emailHash:string){return Number(await getRedis().eval(limiterScript,1,`auth:password-reset:email:${emailHash}`,15*60*1000))}
+export async function consumeSmtpVerificationAttempt(tenantId:string){
+ const identity=createHash("sha256").update(tenantId).digest("hex"),key=`integration:smtp-verify:${identity}`;return Number(await getRedis().eval(limiterScript,1,key,15*60*1000));
 }

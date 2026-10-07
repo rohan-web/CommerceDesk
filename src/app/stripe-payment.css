@@ -1,0 +1,24 @@
+.receipt-stripe-pay{margin:13px 0;padding:13px;border:1px solid #e5ecde;border-radius:7px;background:linear-gradient(110deg,#f7faf4,#eff5ea)}
+.receipt-stripe-pay>button{width:100%;min-height:38px;display:flex;align-items:center;justify-content:center;gap:8px;border:1px solid #829b69;border-radius:5px;background:#6d8955;color:#fff;font-size:10px;font-weight:600;cursor:pointer;transition:transform .18s,box-shadow .18s,background .18s}
+.receipt-stripe-pay>button:hover{transform:translateY(-1px);background:#5e7948;box-shadow:0 6px 16px #4a613626}
+.receipt-stripe-pay>button:disabled{opacity:.7;cursor:wait;transform:none}
+.receipt-stripe-pay>button svg{width:14px;height:14px}
+.receipt-stripe-pay>button svg:last-child{margin-left:auto}
+.receipt-stripe-pay>button svg:first-child{margin-left:6px}
+.receipt-stripe-pay>p{display:flex;align-items:center;gap:5px;margin:9px 0 0;color:#a66d56;font-size:8px;line-height:1.5}
+.receipt-stripe-pay>p svg{width:13px;height:13px;flex:0 0 auto}
+.receipt-stripe-return{display:flex;align-items:center;gap:9px;margin:12px 0;padding:11px;border:1px solid #e6ebdf;border-radius:6px;background:#f7f9f4;color:#83906f}
+.receipt-stripe-return>svg{width:15px;height:15px;flex:0 0 auto}
+.receipt-stripe-return>span{display:grid;gap:4px;min-width:0;flex:1}
+.receipt-stripe-return b{color:#65765a;font-size:8px}
+.receipt-stripe-return small{color:#99a395;font-size:7px;line-height:1.5}
+.receipt-stripe-return>a{flex:0 0 auto;color:#748c5c;font-size:8px;text-decoration:underline;text-underline-offset:2px}
+.receipt-spinner{animation:stripe-spin 1s linear infinite}
+.stripe-webhook-url{margin-top:12px;padding:10px;border:1px solid #e4eae0;border-radius:6px;background:#fff}
+.stripe-webhook-url>small{display:block;color:#899687;font:7px var(--mono);letter-spacing:.5px}
+.stripe-webhook-url>div{display:flex;align-items:center;gap:7px;margin-top:6px}
+.stripe-webhook-url code{min-width:0;flex:1;overflow-wrap:anywhere;color:#687863;font:7px var(--mono);line-height:1.5}
+.stripe-webhook-url button{display:flex;align-items:center;gap:4px;flex:0 0 auto;border:1px solid #e5ebe1;border-radius:4px;background:#f9fbf7;padding:5px 7px;color:#718560;font-size:7px;cursor:pointer}
+.stripe-webhook-url button svg{width:11px;height:11px}
+.stripe-webhook-url p{margin:7px 0 0;color:#9aa498;font-size:7px;line-height:1.5}
+@media(prefers-reduced-motion:reduce){.receipt-stripe-pay>button{transition:none}.receipt-stripe-pay>button:hover{transform:none}.receipt-spinner{animation-duration:2s}}

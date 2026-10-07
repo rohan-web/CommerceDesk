@@ -1,0 +1,11 @@
+import {randomBytes} from "node:crypto";
+import mongoose from "mongoose";
+import {NextResponse} from "next/server";
+import {requireTenantAccess} from "@/server/tenant-scope";
+import {isSameOrigin} from "@/server/request-security";
+import {Conversation} from "@/server/models/Conversation";
+import {AuditEvent} from "@/server/models/AuditEvent";
+import {newSessionToken,hashSessionToken} from "@/server/secrets";
+type Context={params:Promise<{id:string}>};
+function fail(error:unknown){if(error instanceof Error&&error.message==="PERMISSION_DENIED")return NextResponse.json({error:"Inbox access is not permitted."},{status:403});return NextResponse.json({error:"A new customer link could not be issued."},{status:503})}
+export async function POST(request:Request,context:Context){if(!isSameOrigin(request))return NextResponse.json({error:"Request origin could not be verified."},{status:403});let access;try{access=await requireTenantAccess("conversations:reply")}catch(error){return fail(error)}if(!access)return NextResponse.json({error:"Sign in is required."},{status:401});const{id}=await context.params;if(!mongoose.isValidObjectId(id))return NextResponse.json({error:"Conversation not found."},{status:404});const session=await mongoose.startSession();let sharePath="",expiresAt=new Date(Date.now()+30*24*60*60*1000);try{await session.withTransaction(async()=>{const conversation=await Conversation.findOne({_id:id,tenantId:access.scope.tenantId}).session(session);if(!conversation)throw new Error("CONVERSATION_NOT_FOUND");const token=newSessionToken();conversation.accessTokenHash=hashSessionToken(token);conversation.accessExpiresAt=expiresAt;await conversation.save({session});await AuditEvent.create([{tenantId:access.scope.tenantId,actorId:access.scope.userId,action:"conversation.link_rotated",entityType:"conversation",entityId:String(conversation._id),requestId:randomBytes(12).toString("hex"),metadata:{expiresAt:expiresAt.toISOString()}}],{session});sharePath=`/conversation/${encodeURIComponent(token)}`})}catch(error){if(error instanceof Error&&error.message==="CONVERSATION_NOT_FOUND")return NextResponse.json({error:"Conversation not found."},{status:404});return fail(error)}finally{await session.endSession()}return NextResponse.json({sharePath,expiresAt},{headers:{"Cache-Control":"private, no-store"}})}

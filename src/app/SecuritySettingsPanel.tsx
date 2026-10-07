@@ -1,0 +1,37 @@
+"use client";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { Check, CircleAlert, Copy, KeyRound, LoaderCircle, ShieldCheck, ShieldOff, Smartphone } from "lucide-react";
+import styles from "./SecuritySettingsPanel.module.css";
+
+type SecurityStatus = { enabled: boolean; enabledAt: string | null; recoveryCodesRemaining: number };
+type Enrollment = { secret: string; otpauthUri: string; expiresAt: string };
+export default function SecuritySettingsPanel() {
+  const [status, setStatus] = useState<SecurityStatus | null>(null), [enrollment, setEnrollment] = useState<Enrollment | null>(null), [codes, setCodes] = useState<string[]>([]);
+  const [code, setCode] = useState(""), [password, setPassword] = useState(""), [busy, setBusy] = useState(false), [error, setError] = useState(""), [notice, setNotice] = useState("");
+  const load = useCallback(async () => { try { const response = await fetch("/api/session/mfa", { cache: "no-store" }), body = await response.json(); if (!response.ok) throw new Error(body.error || "Account security could not be loaded."); setStatus(body); } catch (e) { setError(e instanceof Error ? e.message : "Account security could not be loaded."); } }, []);
+  useEffect(() => { void load(); }, [load]);
+  async function send(action: "begin" | "confirm" | "disable" | "regenerate", event?: FormEvent) {
+    event?.preventDefault(); setBusy(true); setError(""); setNotice("");
+    try {
+      const payload = action === "confirm" ? { action, code } : action === "begin" ? { action, password } : action === "disable" || action === "regenerate" ? { action, code, password } : { action };
+      const response = await fetch("/api/session/mfa", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) }), body = await response.json();
+      if (!response.ok) throw new Error(body.error || "Account security could not be updated.");
+      if (action === "begin") { setEnrollment(body); setCode(""); setPassword(""); }
+      if (action === "confirm" || action === "regenerate") { setCodes(body.recoveryCodes || []); setEnrollment(null); setCode(""); setPassword(""); setNotice("Save these recovery codes now. They are shown only once."); }
+      if (action === "disable") { setCodes([]); setPassword(""); setCode(""); setNotice("Two-step sign-in has been disabled."); }
+      await load();
+    } catch (e) { setError(e instanceof Error ? e.message : "Account security could not be updated."); }
+    finally { setBusy(false); }
+  }
+  async function copy(value: string) { try { await navigator.clipboard.writeText(value); setNotice("Copied to clipboard."); } catch { setError("Clipboard access failed. Select and copy the code text manually."); } }
+  return <section className={styles.wrap}>
+    <header className={styles.heading}><div><small>ACCOUNT · SECURITY</small><h1>Protect your sign-in</h1><p>Use an authenticator app for a second check whenever your account signs in.</p></div><span className={status?.enabled ? styles.enabled : styles.disabled}><i/>{status ? status.enabled ? "TWO-STEP ON" : "PASSWORD ONLY" : "CHECKING"}</span></header>
+    {error && <div className={styles.error} role="alert"><CircleAlert/>{error}</div>}{notice && <div className={styles.notice} role="status"><Check/>{notice}</div>}
+    {!status ? <div className={styles.loading}><LoaderCircle className={styles.spin}/>Loading account security…</div> : <>
+      {!status.enabled && !enrollment && <article className={styles.card}><div className={styles.icon}><Smartphone/></div><form className={styles.form} onSubmit={e=>void send("begin",e)}><small>AUTHENTICATOR APP</small><h2>Add a sign-in code</h2><p>CommerceDesk stores the authenticator secret encrypted. Setup requires your phone’s clock to be correct. Ten single-use recovery codes are generated after confirmation.</p><label htmlFor="mfa-begin-password">Confirm your password to start</label><input id="mfa-begin-password" type="password" autoComplete="current-password" required value={password} onChange={e=>setPassword(e.target.value)}/><button className={styles.primary} disabled={busy||!password}>{busy?<LoaderCircle className={styles.spin}/>:<ShieldCheck/>}Set up two-step sign-in</button></form></article>}
+      {enrollment && <article className={styles.card}><div className={styles.icon}><KeyRound/></div><form className={styles.form} onSubmit={e => void send("confirm", e)}><small>STEP 1 OF 2 · ADD YOUR AUTHENTICATOR</small><h2>Enter this key in your authenticator app</h2><p>Choose “enter setup key” in your authenticator app, use the account label CommerceDesk, and select time-based codes with 6 digits and a 30-second period.</p><div className={styles.secret}><code>{enrollment.secret}</code><button type="button" onClick={() => void copy(enrollment.secret)} aria-label="Copy authenticator key"><Copy/></button></div><label htmlFor="mfa-enroll-code">Enter the current 6-digit code</label><input id="mfa-enroll-code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required value={code} onChange={e=>setCode(e.target.value.replace(/\D/g, ""))}/><button className={styles.primary} disabled={busy||code.length!==6}>{busy?<LoaderCircle className={styles.spin}/>:<Check/>}Verify and turn on</button><button className={styles.textButton} type="button" onClick={()=>setEnrollment(null)}>Cancel setup</button></form></article>}
+      {status.enabled && !codes.length && <article className={styles.card}><div className={styles.icon}><ShieldCheck/></div><div className={styles.cardCopy}><small>ACTIVE SINCE {status.enabledAt ? new Date(status.enabledAt).toLocaleDateString() : ""}</small><h2>Two-step sign-in is on</h2><p>Authenticator codes are single-use within each time window. {status.recoveryCodesRemaining} recovery codes remain. Changing this setting signs out other active sessions on this account.</p><div className={styles.form}><label htmlFor="mfa-password">Confirm your password</label><input id="mfa-password" type="password" autoComplete="current-password" required value={password} onChange={e=>setPassword(e.target.value)}/><label htmlFor="mfa-code">Authenticator or remaining recovery code</label><input id="mfa-code" autoComplete="one-time-code" required maxLength={64} value={code} onChange={e=>setCode(e.target.value)}/><div className={styles.actions}><button type="button" className={styles.secondary} disabled={busy||!password||!code} onClick={()=>void send("regenerate")}>{busy?<LoaderCircle className={styles.spin}/>:<KeyRound/>}Replace recovery codes</button><button type="button" className={styles.danger} disabled={busy||!password||!code} onClick={()=>void send("disable")}>{busy?<LoaderCircle className={styles.spin}/>:<ShieldOff/>}Disable two-step sign-in</button></div></div></div></article>}
+      {codes.length>0 && <article className={styles.codes}><div><small>STEP 2 OF 2 · SAVE THESE NOW</small><h2>Recovery codes</h2><p>Each code works once if you lose access to your authenticator. Store them somewhere private. CommerceDesk will not show them again.</p></div><pre>{codes.map((value,index)=><code key={value}>{String(index+1).padStart(2,"0")}　{value}</code>)}</pre><button className={styles.secondary} onClick={()=>void copy(codes.join("\n"))}><Copy/>Copy all codes</button><button className={styles.primary} onClick={()=>{setCodes([]);setNotice("")}}><Check/>I saved these codes</button></article>}
+    </>}
+  </section>;
+}

@@ -29,7 +29,8 @@ export async function POST(request:Request,context:Context){
  const prior=await Payment.findOne({tenantId:access.scope.tenantId,idempotencyKey:key}).select("+requestFingerprint").lean().catch(()=>null);if(prior){if(prior.requestFingerprint!==fingerprint||String(prior.orderId)!==id)return NextResponse.json({error:"This Idempotency-Key was already used for a different ledger entry."},{status:409});return NextResponse.json({entry:prior,replayed:true},{headers:{"Cache-Control":"private, no-store"}})}
  const session=await mongoose.startSession();let result:unknown,replayed=false;
  try{await session.withTransaction(async()=>{
-  const order=await Order.findOne({_id:id,tenantId:access.scope.tenantId}).session(session);if(!order)throw new Error("ORDER_NOT_FOUND");
+  const order=await Order.findOne({_id:id,tenantId:access.scope.tenantId}).select("+stripeRefundsPendingMinor").session(session);if(!order)throw new Error("ORDER_NOT_FOUND");
+  if(parsed.data.direction==="refund"&&(order.stripeRefundsPendingMinor??0)>0)throw new Error("REFUND_IN_PROGRESS");
   if(parsed.data.direction==="capture"&&order.status==="cancelled")throw new Error("ORDER_CANCELLED");
   const [captured,refunded]=await Promise.all([
    Payment.aggregate<{total:number}>([{$match:{tenantId:order.tenantId,orderId:order._id,direction:"capture"}},{$group:{_id:null,total:{$sum:"$amountMinor"}}}]).session(session),
@@ -48,6 +49,7 @@ export async function POST(request:Request,context:Context){
   if(error instanceof Error&&error.message==="ORDER_CANCELLED")return NextResponse.json({error:"A cancelled order cannot receive a payment."},{status:409});
   if(error instanceof Error&&error.message==="CAPTURE_EXCEEDS_BALANCE")return NextResponse.json({error:"The payment exceeds the order's remaining balance."},{status:409});
   if(error instanceof Error&&error.message==="REFUND_EXCEEDS_CAPTURED")return NextResponse.json({error:"A refund cannot exceed the verified, unrefunded amount."},{status:409});
+  if(error instanceof Error&&error.message==="REFUND_IN_PROGRESS")return NextResponse.json({error:"A Stripe refund is still being processed for this order. Wait for its result before recording another refund."},{status:409});
   if((error as {code?:number})?.code===11000){const entry=await Payment.findOne({tenantId:access.scope.tenantId,idempotencyKey:key}).select("+requestFingerprint").lean();if(entry&&entry.requestFingerprint===fingerprint&&String(entry.orderId)===id)return NextResponse.json({entry,replayed:true},{headers:{"Cache-Control":"private, no-store"}});return NextResponse.json({error:"This Idempotency-Key is already in use."},{status:409})}
   return fail(error);
  }finally{await session.endSession()}
